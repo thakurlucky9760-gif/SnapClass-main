@@ -50,7 +50,7 @@ The app uses computer-vision and audio-processing pipelines to identify students
 ## Project structure
 
 ```text
-new/
+SnapClass/
 ├── app.py                     # Streamlit app entry point
 ├── README.md                 # Project documentation
 ├── requirements.txt          # Python dependencies
@@ -77,8 +77,8 @@ new/
 1. Clone the repository:
 
 ```bash
-git clone <your-repository-url>
-cd new
+git clone https://github.com/thakurlucky9760-gif/SnapClass-main.git
+cd SnapClass-main
 ```
 
 2. Create and activate a virtual environment:

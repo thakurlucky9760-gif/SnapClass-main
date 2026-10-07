@@ -1,5 +1,7 @@
 # SnapClass
 
+**Live Demo**: [https://snapclass-chaitanya.streamlit.app/](https://snapclass-chaitanya.streamlit.app/)
+
 SnapClass is an AI-powered classroom attendance system designed to make attendance faster, more accurate, and less dependent on manual roll calls. The project combines face recognition, voice-based verification, subject management, and data storage to provide a full attendance workflow for teachers and students.
 
 ## Overview

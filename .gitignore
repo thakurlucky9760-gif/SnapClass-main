@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Virtual environments
+venv/
+.venv/
+ENV/
+
+# Environment and secrets
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Editor / tooling
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Streamlit secrets (keep secrets.toml.example tracked)
+.streamlit/secrets.toml
+!.streamlit/secrets.toml.example
+
+# Build and packaging
+build/
+dist/
+*.egg-info/

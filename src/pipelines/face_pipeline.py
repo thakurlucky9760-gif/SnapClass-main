@@ -24,6 +24,8 @@ def load_dlib_models():
     return detector, sp, facerec
 
 def get_face_embeddings(image_np):
+    if len(image_np.shape) == 3 and image_np.shape[2] == 4:
+        image_np = image_np[:, :, :3]
     detector, sp, facerec = load_dlib_models()
     faces = detector(image_np, 1)
 
@@ -67,7 +69,7 @@ def get_trained_model():
 
 
 def train_classifier():
-    st.cache_resource.clear()
+    get_trained_model.clear()
     model_data = get_trained_model()
     return bool(model_data)
 

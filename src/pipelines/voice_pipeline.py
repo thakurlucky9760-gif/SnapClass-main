@@ -11,15 +11,18 @@ def load_voice_encoder():
 
 
 def get_voice_embedding(audio_bytes):
+    if not audio_bytes or len(audio_bytes) < 1000:
+        return None
     try:
         encoder = load_voice_encoder()
-
         audio, sr = librosa.load(io.BytesIO(audio_bytes), sr=16000)
+        if len(audio) < 16000 * 0.3:  # Less than 0.3s is too short for reliable embedding
+            return None
         wav = preprocess_wav(audio)
         embedding = encoder.embed_utterance(wav)
         return embedding.tolist()
     except Exception as e:
-        st.error('Voice recog error')
+        print(f"Voice embedding extraction warning: {e}")
         return None
     
 

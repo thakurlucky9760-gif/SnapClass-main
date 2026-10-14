@@ -133,60 +133,64 @@ def teacher_tab_take_attendance():
     with c1:
         if st.button('Clear all photos', width='stretch', type='tertiary', icon=':material/delete:', disabled=not has_photos):
             st.session_state.attendance_images = []
+            st.session_state.added_photo_signatures = set()
             st.rerun()
 
-
     with c2:
-        
         if st.button('Run Face Analysis', width='stretch', type='secondary', icon=':material/analytics:', disabled=not has_photos):
-            with st.spinner('Deep scanning classroom photos...'):
-                all_detected_ids = {}
+            # Fetch enrolled students for this subject first to prioritize and scope matching
+            enrolled_res = supabase.table('subject_students').select(
+                "*, student(*)"
+            ).eq('subject_id', selected_subject_id).execute()
+            enrolled_students = enrolled_res.data or []
 
-                for idx, img in enumerate(st.session_state.attendance_images):
-                    img_np = np.array(img.convert('RGB'))
-                    detected, _, _ = predict_attendance(img_np)
+            if not enrolled_students:
+                st.warning('No students are enrolled in this course yet. Please enroll students first.')
+            else:
+                with st.spinner('Deep scanning classroom photos...'):
+                    all_detected_ids = {}
 
+                    for idx, img in enumerate(st.session_state.attendance_images):
+                        img_np = np.array(img.convert('RGB'))
+                        detected, _, num_faces = predict_attendance(
+                            img_np,
+                            candidate_students=enrolled_students,
+                            threshold=0.60
+                        )
 
-                    if detected:
-                        for sid in detected.keys():
-                            student_id = int(sid)
+                        if detected:
+                            for sid, match_data in detected.items():
+                                student_id = int(sid)
+                                conf = match_data.get('confidence', '') if isinstance(match_data, dict) else ''
+                                conf_str = f" ({conf}%)" if conf else ""
+                                all_detected_ids.setdefault(student_id, []).append(f"Photo {idx+1}{conf_str}")
 
-                            all_detected_ids.setdefault(student_id, []).append(f"Photo {idx+1}")
-
-                enrolled_res = supabase.table('subject_students').select(
-                                "*, student(*)"
-                            ).eq('subject_id', selected_subject_id).execute()
-                enrolled_students = enrolled_res.data
-
-                if not enrolled_students:
-                    st.warning('No students enrolled in this course')
-                else:
-
-                    results, attendance_to_log  = [], []
-
+                    results, attendance_to_log = [], []
                     current_timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
-
                     for node in enrolled_students:
-                        student = node['student']
-                        sources = all_detected_ids.get(int(student['student_id']), [])
-                        is_present= len(sources) > 0
+                        student = node.get('student')
+                        if not student:
+                            continue
+                        sid = int(student['student_id'])
+                        sources = all_detected_ids.get(sid, [])
+                        is_present = len(sources) > 0
 
                         results.append({
                             "Name": student['name'],
-                            "ID": student['student_id'],
+                            "ID": sid,
                             "Source": ", ".join(sources) if is_present else "-",
                             "Status": "✅ Present" if is_present else "❌ Absent"
                         })
 
                         attendance_to_log.append({
-                            'student_id': student['student_id'],
+                            'student_id': sid,
                             'subject_id': selected_subject_id,
                             'timestamp': current_timestamp,
                             'is_present': bool(is_present)
                         })
 
-                attendance_result_dialog(pd.DataFrame(results), attendance_to_log)
+                    attendance_result_dialog(pd.DataFrame(results), attendance_to_log)
 
     with c3:
         if st.button('Use Voice Attendance', type='primary', width='stretch', icon=':material/mic:'):
@@ -290,14 +294,13 @@ def login_teacher(username, password):
     if not username or not password:
         return False
     
-    teacher = teacher_login(username, password)
+    teacher = teacher_login(username.strip(), password)
 
     if teacher:
         st.session_state.user_role ='teacher'
         st.session_state.teacher_data = teacher
         st.session_state.is_logged_in = True
         return True
-    
 
     return False
 def teacher_screen_login():
@@ -335,12 +338,15 @@ def teacher_screen_login():
     with btnc2:
         if st.button('Register Instead', type="primary", icon=':material/passkey:', width='stretch'):
             st.session_state.teacher_login_type = 'register'
+            st.rerun()
 
     footer_dashboard()
 
 
 
 def register_teacher(teacher_username, teacher_name, teacher_pass, teacher_pass_confirm):
+    teacher_username = teacher_username.strip() if teacher_username else ""
+    teacher_name = teacher_name.strip() if teacher_name else ""
     if not teacher_username or not teacher_name or not teacher_pass:
         return False, "All Fields are required!"
     if check_teacher_exists(teacher_username):
@@ -400,5 +406,6 @@ def teacher_screen_register():
     with btnc2:
         if st.button('Login Instead', type="primary", icon=':material/passkey:', width='stretch'):
             st.session_state.teacher_login_type = 'login'
+            st.rerun()
 
     footer_dashboard()

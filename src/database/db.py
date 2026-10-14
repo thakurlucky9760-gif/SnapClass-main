@@ -12,20 +12,23 @@ def check_pass(pwd, hashed):
 
 def check_teacher_exists(username):
     # Check for unique username, returns false when username is already taken
-    response = supabase.table("teachers").select("username").eq("username", username).execute()
+    clean_user = username.strip() if username else ""
+    response = supabase.table("teachers").select("username").eq("username", clean_user).execute()
     return len(response.data) > 0 
 
 
 
 def create_teacher(username, password, name):
-
-    data = { "username" : username, "password": hash_pass(password), "name": name}
+    clean_user = username.strip() if username else ""
+    clean_name = name.strip() if name else ""
+    data = { "username" : clean_user, "password": hash_pass(password), "name": clean_name}
     response = supabase.table("teachers").insert(data).execute()
     return response.data
 
 
 def teacher_login(username, password):
-    response = supabase.table("teachers").select("*").eq("username", username).execute()
+    clean_user = username.strip() if username else ""
+    response = supabase.table("teachers").select("*").eq("username", clean_user).execute()
     if response.data:
         teacher = response.data[0]
         if check_pass(password, teacher['password']):
@@ -44,14 +47,16 @@ def create_student(new_name, face_embedding=None, voice_embedding=None):
 
 
 def create_subject(subject_code, name, section, teacher_id):
-    data = {"subject_code": subject_code, "name": name, "section": section, "teacher_id": teacher_id}
+    clean_code = subject_code.strip() if subject_code else ""
+    clean_name = name.strip() if name else ""
+    clean_section = section.strip() if section else ""
+    data = {"subject_code": clean_code, "name": clean_name, "section": clean_section, "teacher_id": teacher_id}
     response = supabase.table("subjects").insert(data).execute()
     return response.data
 
 def get_teacher_subjects(teacher_id):
     response = supabase.table('subjects').select("*, subject_students(count), attendance_logs(timestamp)").eq("teacher_id", teacher_id).execute()
-    subjects = response.data
-
+    subjects = response.data or []
 
     for sub in subjects:
         sub['total_students'] = sub.get("subject_students", [{}])[0].get('count', 0) if sub.get('subject_students') else 0
@@ -59,8 +64,7 @@ def get_teacher_subjects(teacher_id):
         unique_sessions = len(set(log['timestamp'] for log in attendance))
         sub['total_classes'] = unique_sessions
 
-
-        sub.pop('subject_student', None)
+        sub.pop('subject_students', None)
         sub.pop('attendance_logs', None)
 
     return subjects

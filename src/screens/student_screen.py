@@ -130,68 +130,44 @@ def student_screen():
     st.space()
 
     if st.session_state.student_auth_mode == 'login':
-        st.header('Login to Student Portal', text_alignment='center')
+        st.header('Login using FaceID', text_alignment='center')
         st.space()
 
-        login_method = st.radio("Choose Login Method", ["📸 FaceID (Biometric)", "🆔 Select Registered Profile"], horizontal=True, key="student_login_tab")
+        face_cam = st.camera_input("Position your face in the center", key="student_login_camera")
+        face_upload = st.file_uploader("Or upload your face photo", type=['jpg', 'jpeg', 'png'], key="student_login_upload")
 
-        if login_method == "📸 FaceID (Biometric)":
-            st.info("Face the camera or upload a face photo to authenticate.")
-            face_cam = st.camera_input("Capture face snapshot", key="student_login_camera")
-            face_upload = st.file_uploader("Or upload your face photo", type=['jpg', 'jpeg', 'png'], key="student_login_upload")
+        login_photo = face_cam or face_upload
 
-            login_photo = face_cam or face_upload
+        if login_photo:
+            with st.spinner('Scanning face & verifying identity...'):
+                detected, all_ids, num_faces = predict_attendance(login_photo, threshold=0.60)
 
-            if login_photo:
-                with st.spinner('Scanning face & verifying identity...'):
-                    detected, all_ids, num_faces = predict_attendance(login_photo, threshold=0.60)
+                if num_faces == 0:
+                    st.warning('Face not detected! Please ensure good lighting and look directly at the camera.')
+                elif num_faces > 1:
+                    st.warning('Multiple faces detected! Please ensure only one person is in the frame.')
+                else:
+                    if detected:
+                        student_id = list(detected.keys())[0]
+                        match_info = detected[student_id]
+                        all_students = get_all_students()
+                        student = next((s for s in all_students if int(s['student_id']) == int(student_id)), None)
 
-                    if num_faces == 0:
-                        st.warning('Face not detected! Please ensure good lighting and look directly at the camera.')
-                    elif num_faces > 1:
-                        st.warning('Multiple faces detected! Please ensure only one person is in the frame.')
-                    else:
-                        if detected:
-                            student_id = list(detected.keys())[0]
-                            match_info = detected[student_id]
-                            all_students = get_all_students()
-                            student = next((s for s in all_students if int(s['student_id']) == int(student_id)), None)
-
-                            if student:
-                                st.session_state.is_logged_in = True
-                                st.session_state.user_role = 'student'
-                                st.session_state.student_data = student
-                                conf = match_info.get('confidence', 95.0) if isinstance(match_info, dict) else 95.0
-                                st.success(f"Face recognized ({conf}% match)! Welcome back, {student['name']}!")
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                st.error("Matched student record not found in database.")
+                        if student:
+                            st.session_state.is_logged_in = True
+                            st.session_state.user_role = 'student'
+                            st.session_state.student_data = student
+                            conf = match_info.get('confidence', 95.0) if isinstance(match_info, dict) else 95.0
+                            st.success(f"Face recognized ({conf}% match)! Welcome back, {student['name']}!")
+                            time.sleep(1)
+                            st.rerun()
                         else:
-                            st.info("Face not recognized in our database. You might need to register first.")
-                            if st.button("Register as New Student", type='primary', icon=':material/person_add:', key='btn_switch_to_reg'):
-                                st.session_state.student_auth_mode = 'register'
-                                st.rerun()
-
-        else:
-            # Fallback: Profile selection login (great when camera is not available)
-            all_students = get_all_students()
-            if not all_students:
-                st.warning("No students registered yet! Please register below.")
-                if st.button("Go to Registration", type='primary'):
-                    st.session_state.student_auth_mode = 'register'
-                    st.rerun()
-            else:
-                student_options = {f"{s['name']} (ID: {s['student_id']})": s for s in all_students}
-                selected_label = st.selectbox("Select your student profile", options=list(student_options.keys()))
-                if st.button("Log In with Selected Profile", type='primary', width='stretch'):
-                    selected_student = student_options[selected_label]
-                    st.session_state.is_logged_in = True
-                    st.session_state.user_role = 'student'
-                    st.session_state.student_data = selected_student
-                    st.toast(f"Welcome, {selected_student['name']}!")
-                    time.sleep(1)
-                    st.rerun()
+                            st.error("Matched student record not found in database.")
+                    else:
+                        st.info("Face not recognized in our database. You might need to register first.")
+                        if st.button("Register as New Student", type='primary', icon=':material/person_add:', key='btn_switch_to_reg'):
+                            st.session_state.student_auth_mode = 'register'
+                            st.rerun()
 
     else:
         st.header('Register New Student Profile', text_alignment='center')

@@ -16,12 +16,10 @@ from src.components.subject_card import subject_card
 
 
 @st.dialog("🎉 Welcome Back!")
-def welcome_student_popup(name, confidence=None):
+def welcome_student_popup(name):
     st.balloons()
     st.markdown(f"## Welcome Back, **{name}**! 👋")
     st.write("Your identity has been verified successfully via FaceID.")
-    if confidence:
-        st.success(f"Biometric Match: **{confidence}% confidence**")
     if st.button("Continue to Dashboard", type="primary", width="stretch", key="btn_welcome_continue"):
         st.session_state.show_welcome_popup = False
         st.rerun()
@@ -32,7 +30,7 @@ def student_dashboard():
     student_id = student_data['student_id']
 
     if st.session_state.get('show_welcome_popup'):
-        welcome_student_popup(student_data['name'], st.session_state.get('login_confidence'))
+        welcome_student_popup(student_data['name'])
 
     c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
     with c1:

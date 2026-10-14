@@ -10,6 +10,7 @@ from src.pipelines.face_pipeline import predict_attendance, get_face_embeddings,
 from src.pipelines.voice_pipeline import get_voice_embedding
 from src.database.db import get_all_students, create_student, get_student_subjects, get_student_attendance, unenroll_student_to_subject
 import time
+import io
 
 from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
@@ -126,6 +127,8 @@ def student_screen():
     with c2:
         if st.button("Go back to Home", type='secondary', key='loginbackbtn', shortcut="control+backspace"):
             st.session_state['login_type'] = None
+            st.session_state.pop('student_reg_photo_bytes', None)
+            st.session_state.pop('student_reg_audio_bytes', None)
             st.rerun()
 
     if 'student_auth_mode' not in st.session_state:
@@ -136,11 +139,15 @@ def student_screen():
         type_login = 'primary' if st.session_state.student_auth_mode == 'login' else 'secondary'
         if st.button("FaceID Login", type=type_login, width='stretch', icon=':material/face:', key='tab_student_login'):
             st.session_state.student_auth_mode = 'login'
+            st.session_state.pop('student_reg_photo_bytes', None)
+            st.session_state.pop('student_reg_audio_bytes', None)
             st.rerun()
     with mode_c2:
         type_reg = 'primary' if st.session_state.student_auth_mode == 'register' else 'secondary'
         if st.button("Register New Student", type=type_reg, width='stretch', icon=':material/person_add:', key='tab_student_reg'):
             st.session_state.student_auth_mode = 'register'
+            st.session_state.pop('student_reg_photo_bytes', None)
+            st.session_state.pop('student_reg_audio_bytes', None)
             st.rerun()
 
     st.space()
@@ -188,11 +195,12 @@ def student_screen():
             new_name = st.text_input("Enter your full name", placeholder='E.g. Lucky Tomar', key="student_reg_name")
 
             st.subheader("Face Enrollment (Required)")
-            st.caption("Capture or upload a clear, front-facing photo with good lighting.")
+            st.caption("Capture a clear, front-facing photo with good lighting.")
             reg_camera = st.camera_input("Take a photo of your face", key="student_reg_camera")
-            reg_upload = st.file_uploader("Or upload a face photo", type=['jpg', 'jpeg', 'png'], key="student_reg_upload")
 
-            final_photo = reg_camera or reg_upload
+            # Persist captured camera photo across reruns (preventing lost photo on submit)
+            if reg_camera is not None:
+                st.session_state['student_reg_photo_bytes'] = reg_camera.getvalue()
 
             st.subheader('Voice Enrollment (Optional)')
             st.caption("Record a short phrase (e.g. 'I am present') to enable voice-based attendance.")
@@ -200,15 +208,25 @@ def student_screen():
             audio_data = None
             try:
                 audio_data = st.audio_input('Record your voice', key="student_reg_audio")
+                if audio_data is not None:
+                    st.session_state['student_reg_audio_bytes'] = audio_data.read()
             except Exception:
                 st.caption('Voice recording not supported on this browser.')
 
             if st.button('Create Student Account', type='primary', width='stretch', key="student_reg_submit"):
+                photo_bytes = None
+                if reg_camera is not None:
+                    photo_bytes = reg_camera.getvalue()
+                    st.session_state['student_reg_photo_bytes'] = photo_bytes
+                elif 'student_reg_photo_bytes' in st.session_state and st.session_state['student_reg_photo_bytes']:
+                    photo_bytes = st.session_state['student_reg_photo_bytes']
+
                 if not new_name or not new_name.strip():
                     st.warning('Please enter your full name!')
-                elif not final_photo:
-                    st.warning('Please capture or upload a face photo!')
+                elif not photo_bytes:
+                    st.warning('Please capture a face photo!')
                 else:
+                    final_photo = io.BytesIO(photo_bytes)
                     with st.spinner('Extracting biometric features & creating profile..'):
                         try:
                             face_emb, err_msg, n_faces = get_primary_face_embedding(final_photo)
@@ -220,17 +238,26 @@ def student_screen():
                                     st.info(f"Detected {n_faces} faces; selected the primary foreground face for your profile.")
 
                                 voice_emb = None
-                                if audio_data:
+                                voice_bytes = None
+                                if audio_data is not None:
                                     try:
-                                        audio_bytes = audio_data.read()
-                                        if audio_bytes:
-                                            voice_emb = get_voice_embedding(audio_bytes)
+                                        voice_bytes = audio_data.read()
+                                    except Exception:
+                                        pass
+                                if not voice_bytes and 'student_reg_audio_bytes' in st.session_state:
+                                    voice_bytes = st.session_state.get('student_reg_audio_bytes')
+
+                                if voice_bytes:
+                                    try:
+                                        voice_emb = get_voice_embedding(voice_bytes)
                                     except Exception as e:
                                         print(f"Optional voice embedding skipped: {e}")
 
                                 response_data = create_student(new_name.strip(), face_embedding=face_emb, voice_embedding=voice_emb)
 
                                 if response_data and len(response_data) > 0:
+                                    st.session_state.pop('student_reg_photo_bytes', None)
+                                    st.session_state.pop('student_reg_audio_bytes', None)
                                     train_classifier()
                                     st.session_state.is_logged_in = True
                                     st.session_state.user_role = 'student'

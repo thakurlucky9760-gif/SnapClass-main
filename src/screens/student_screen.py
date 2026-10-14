@@ -14,9 +14,26 @@ import time
 from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
 
+
+@st.dialog("🎉 Welcome Back!")
+def welcome_student_popup(name, confidence=None):
+    st.balloons()
+    st.markdown(f"## Welcome Back, **{name}**! 👋")
+    st.write("Your identity has been verified successfully via FaceID.")
+    if confidence:
+        st.success(f"Biometric Match: **{confidence}% confidence**")
+    if st.button("Continue to Dashboard", type="primary", width="stretch", key="btn_welcome_continue"):
+        st.session_state.show_welcome_popup = False
+        st.rerun()
+
+
 def student_dashboard():
     student_data = st.session_state.student_data
     student_id = student_data['student_id']
+
+    if st.session_state.get('show_welcome_popup'):
+        welcome_student_popup(student_data['name'], st.session_state.get('login_confidence'))
+
     c1, c2 = st.columns(2, vertical_alignment='center', gap='xxlarge')
     with c1:
         header_dashboard()
@@ -24,6 +41,7 @@ def student_dashboard():
         st.subheader(f"""Welcome, {student_data['name']} """)
         if st.button("Logout", type='secondary', key='studentlogoutbtn', shortcut="control+backspace"):
             st.session_state['is_logged_in'] = False
+            st.session_state.show_welcome_popup = False
             del st.session_state.student_data 
             st.rerun()
 
@@ -158,8 +176,8 @@ def student_screen():
                             st.session_state.user_role = 'student'
                             st.session_state.student_data = student
                             conf = match_info.get('confidence', 95.0) if isinstance(match_info, dict) else 95.0
-                            st.success(f"Face recognized ({conf}% match)! Welcome back, {student['name']}!")
-                            time.sleep(1)
+                            st.session_state.show_welcome_popup = True
+                            st.session_state.login_confidence = conf
                             st.rerun()
                         else:
                             st.error("Matched student record not found in database.")
@@ -222,8 +240,8 @@ def student_screen():
                                     st.session_state.is_logged_in = True
                                     st.session_state.user_role = 'student'
                                     st.session_state.student_data = response_data[0]
-                                    st.success(f'Student Profile Created! Welcome {new_name.strip()}!')
-                                    time.sleep(1)
+                                    st.session_state.show_welcome_popup = True
+                                    st.session_state.login_confidence = 100.0
                                     st.rerun()
                                 else:
                                     st.error('Database did not return student data. Please try again.')

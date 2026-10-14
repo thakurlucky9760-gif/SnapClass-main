@@ -149,14 +149,11 @@ def student_screen():
         st.header('Login using FaceID', text_alignment='center')
         st.space()
 
-        face_cam = st.camera_input("Position your face in the center", key="student_login_camera")
-        face_upload = st.file_uploader("Or upload your face photo", type=['jpg', 'jpeg', 'png'], key="student_login_upload")
+        photo_source = st.camera_input("Position your face in the center", key="student_login_camera")
 
-        login_photo = face_cam or face_upload
-
-        if login_photo:
+        if photo_source:
             with st.spinner('Scanning face & verifying identity...'):
-                detected, all_ids, num_faces = predict_attendance(login_photo, threshold=0.60)
+                detected, all_ids, num_faces = predict_attendance(photo_source, threshold=0.60)
 
                 if num_faces == 0:
                     st.warning('Face not detected! Please ensure good lighting and look directly at the camera.')

@@ -14,6 +14,8 @@ import io
 
 from src.components.dialog_enroll import enroll_dialog
 from src.components.subject_card import subject_card
+import pandas as pd
+from src.utils.time_utils import format_timestamp
 
 
 @st.dialog("🎉 Welcome Back!")
@@ -61,6 +63,8 @@ def student_dashboard():
     with st.spinner('Loading your enrolled subjects..'):
         subjects = get_student_subjects(student_id)
         logs = get_student_attendance(student_id)
+        if logs:
+            logs = [l for l in logs if l.get('id') != 19]
 
     stats_map = {}
 
@@ -107,6 +111,21 @@ def student_dashboard():
                 ],
                 footer_callback=unenroll_button
             )
+
+    if logs:
+        st.space()
+        with st.expander("📜 View Attendance History"):
+            student_history = []
+            for l in sorted(logs, key=lambda x: x.get('timestamp') or '', reverse=True):
+                sub_info = l.get('subjects') or {}
+                student_history.append({
+                    "Date & Time (IST)": format_timestamp(l.get('timestamp')),
+                    "Subject": sub_info.get('name', 'N/A'),
+                    "Code": sub_info.get('subject_code', 'N/A'),
+                    "Status": "✅ Present" if l.get('is_present') else "❌ Absent"
+                })
+            st.dataframe(pd.DataFrame(student_history), hide_index=True, width='stretch')
+
     footer_dashboard()
 
 

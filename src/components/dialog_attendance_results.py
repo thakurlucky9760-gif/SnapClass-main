@@ -5,9 +5,13 @@ import time
 
 
 from src.database.db import create_attendance
+from src.utils.time_utils import format_timestamp
 
 def show_attendance_result(df, logs):
     st.write('Please review attendance before confirming.')
+    if logs and len(logs) > 0 and logs[0].get('timestamp'):
+        formatted_time = format_timestamp(logs[0]['timestamp'])
+        st.info(f"🕒 **Session Timestamp**: {formatted_time} (IST)")
     st.dataframe(df, hide_index=True, width='stretch')
 
     col1, col2 = st.columns(2)

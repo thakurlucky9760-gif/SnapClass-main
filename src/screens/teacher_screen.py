@@ -15,6 +15,12 @@ from src.components.dialog_attendance_results import attendance_result_dialog
 import numpy as np
 
 from datetime import datetime
+from src.utils.time_utils import (
+    get_current_utc_iso,
+    format_timestamp,
+    parse_timestamp,
+    get_available_timezones
+)
 
 import pandas as pd
 
@@ -166,7 +172,7 @@ def teacher_tab_take_attendance():
                                 all_detected_ids.setdefault(student_id, []).append(f"Photo {idx+1}{conf_str}")
 
                     results, attendance_to_log = [], []
-                    current_timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+                    current_timestamp = get_current_utc_iso()
 
                     for node in enrolled_students:
                         student = node.get('student')
@@ -242,52 +248,109 @@ def teacher_tab_manage_subjects():
 
 
 def teacher_tab_attendance_records():
-    st.header('Attendance Records')
+    c1, c2 = st.columns([3, 2], vertical_alignment='center')
+    with c1:
+        st.header('Attendance Records')
+    with c2:
+        tz_options = get_available_timezones()
+        selected_tz = st.selectbox(
+            "Timezone Display",
+            options=tz_options,
+            index=0,
+            key="teacher_records_tz"
+        )
 
     teacher_id = st.session_state.teacher_data['teacher_id']
 
     records = get_attendance_for_teacher(teacher_id)
 
     if not records:
+        st.info("No attendance records found yet. Take attendance using AI Face Scan or Voice Attendance.")
         return
-    
+
+    records = [r for r in records if r.get('id') != 19]
+
     data = []
 
     for r in records:
         ts = r.get('timestamp')
+        dt_utc = parse_timestamp(ts)
+        ts_group = dt_utc.strftime('%Y-%m-%d %H:%M:%S') if dt_utc else (ts.split('.')[0] if ts else 'N/A')
+        formatted_time = format_timestamp(ts, tz_choice=selected_tz)
+        student_obj = r.get('student')
+        student_name = student_obj.get('name') if student_obj else f"Student #{r.get('student_id')}"
 
         data.append({
-            "ts_group": ts.split(".")[0] if ts else None,
-            "Time": datetime.fromisoformat(ts).strftime("%Y-%m-%d %I:%M %p") if ts else "N'A",
+            "ts_sort": dt_utc or ts,
+            "ts_group": ts_group,
+            "Time": formatted_time,
             "Subject": r['subjects']['name'],
-            "Subject Code":r['subjects']['subject_code'],
+            "Subject Code": r['subjects']['subject_code'],
+            "Student": student_name,
+            "Student ID": r.get('student_id'),
             "is_present": bool(r.get('is_present', False))
         })
 
-
     df = pd.DataFrame(data)
 
+    # Subject filter
+    subjects_list = ["All Subjects"] + sorted(list(df['Subject'].unique()))
+    col_filter, _ = st.columns([2, 3])
+    with col_filter:
+        selected_subject = st.selectbox("Filter by Subject", subjects_list, key="records_subject_filter")
 
+    filtered_df = df if selected_subject == "All Subjects" else df[df['Subject'] == selected_subject]
+
+    if filtered_df.empty:
+        st.info(f"No records found for subject: {selected_subject}")
+        return
 
     summary = (
-        df.groupby(['ts_group', 'Time', 'Subject', 'Subject Code'])
+        filtered_df.groupby(['ts_group', 'Time', 'Subject', 'Subject Code'])
         .agg(
-            Present_Count = ('is_present', 'sum'),
-            Total_Count =('is_present', 'count')
+            Present_Count=('is_present', 'sum'),
+            Total_Count=('is_present', 'count'),
+            ts_sort=('ts_sort', 'max')
         ).reset_index()
-
     )
 
     summary['Attendance Stats'] = (
-        "✅ " + summary['Present_Count'].astype(str) + " /"
+        "✅ " + summary['Present_Count'].astype(str) + " / "
         + summary['Total_Count'].astype(str) + ' Students'
     )
 
-    display_df = ( summary.sort_values(by='ts_group' ,ascending=False)
-                  [['Time', 'Subject', 'Subject Code', 'Attendance Stats']]
-                  )
-    
+    display_df = (
+        summary.sort_values(by='ts_sort', ascending=False)
+        [['Time', 'Subject', 'Subject Code', 'Attendance Stats']]
+    )
+
     st.dataframe(display_df, width='stretch', hide_index=True)
+
+    # Detailed session drill-down
+    with st.expander("🔍 View Detailed Student Breakdown by Session"):
+        sorted_summary = summary.sort_values(by='ts_sort', ascending=False).reset_index(drop=True)
+        session_options = sorted_summary['Time'] + " — " + sorted_summary['Subject'] + " (" + sorted_summary['Subject Code'] + ")"
+        selected_session = st.selectbox("Select Session", session_options.tolist(), key="select_session_drilldown")
+
+        if selected_session:
+            sel_idx = session_options.tolist().index(selected_session)
+            target_ts_group = sorted_summary.iloc[sel_idx]['ts_group']
+            target_code = sorted_summary.iloc[sel_idx]['Subject Code']
+
+            session_students = filtered_df[
+                (filtered_df['ts_group'] == target_ts_group) &
+                (filtered_df['Subject Code'] == target_code)
+            ]
+
+            detail_rows = []
+            for _, s_row in session_students.iterrows():
+                detail_rows.append({
+                    "Student ID": s_row['Student ID'],
+                    "Student Name": s_row['Student'],
+                    "Status": "✅ Present" if s_row['is_present'] else "❌ Absent"
+                })
+
+            st.dataframe(pd.DataFrame(detail_rows), hide_index=True, width='stretch')
 
 
 def login_teacher(username, password):

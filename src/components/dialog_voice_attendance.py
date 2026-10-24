@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+from src.utils.time_utils import get_current_utc_iso
 
 from src.pipelines.voice_pipeline import process_bulk_audio
 from src.database.config import supabase
@@ -82,9 +83,7 @@ def voice_attendance_dialog(selected_subject_id):
             results = []
             attendance_to_log = []
 
-            current_timestamp = datetime.now().strftime(
-                "%Y-%m-%dT%H:%M:%S"
-            )
+            current_timestamp = get_current_utc_iso()
 
             for node in enrolled_students:
 

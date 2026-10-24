@@ -64,7 +64,7 @@ def student_dashboard():
         subjects = get_student_subjects(student_id)
         logs = get_student_attendance(student_id)
         if logs:
-            logs = [l for l in logs if l.get('id') != 19]
+            logs = [l for l in logs if l.get('id') not in (19, 26)]
 
     stats_map = {}
 

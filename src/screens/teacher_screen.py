@@ -268,7 +268,7 @@ def teacher_tab_attendance_records():
         st.info("No attendance records found yet. Take attendance using AI Face Scan or Voice Attendance.")
         return
 
-    records = [r for r in records if r.get('id') != 19]
+    records = [r for r in records if r.get('id') not in (19, 26)]
 
     data = []
 

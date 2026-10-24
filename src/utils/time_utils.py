@@ -1,7 +1,7 @@
 """
 Time and timezone utility functions for SnapClass.
-Ensures attendance records are saved with accurate UTC timestamps and
-displayed in the user's local timezone (defaults to Asia/Kolkata / IST, UTC+05:30).
+Ensures attendance records are saved with accurate Indian Standard Time (IST, UTC+05:30)
+and displayed accurately across the application and Supabase database.
 """
 
 from datetime import datetime, timezone, timedelta
@@ -71,26 +71,37 @@ def get_timezone_obj(tz_choice: str = DEFAULT_TIMEZONE_LABEL) -> Any:
     return timezone(timedelta(hours=5, minutes=30), name="IST")
 
 
+def get_current_time_iso() -> str:
+    """
+    Returns current time in Asia/Kolkata (IST, UTC+05:30) as an ISO formatted string.
+    Ensures that records stored in Supabase directly reflect the classroom local time
+    regardless of whether the server is Streamlit Cloud (UTC) or local.
+    Example: '2026-10-24T22:25:00'
+    """
+    ist_tz = get_timezone_obj("Asia/Kolkata")
+    now_ist = datetime.now(timezone.utc).astimezone(ist_tz)
+    return now_ist.strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def get_current_utc_iso() -> str:
-    """
-    Returns current time in ISO-8601 UTC format with explicit timezone.
-    Guarantees consistency across local development, servers, and cloud hosts.
-    Example: '2026-10-24T16:08:20+00:00'
-    """
-    return datetime.now(timezone.utc).isoformat()
+    """Alias for get_current_time_iso to maintain backwards compatibility."""
+    return get_current_time_iso()
 
 
 def parse_timestamp(ts: Union[str, datetime, None]) -> Optional[datetime]:
     """
-    Parses a timestamp string or object into a timezone-aware UTC datetime.
-    Handles ISO format, 'Z' suffix, microseconds, or naive datetimes.
+    Parses a timestamp string or object.
+    - If timezone-aware (e.g. containing '+00:00' or 'Z'), preserves timezone.
+    - If naive (stored as direct local IST time in database), attaches IST timezone.
     """
+    ist_tz = get_timezone_obj("Asia/Kolkata")
+
     if ts is None:
         return None
     if isinstance(ts, datetime):
         if ts.tzinfo is None:
-            return ts.replace(tzinfo=timezone.utc)
-        return ts.astimezone(timezone.utc)
+            return ts.replace(tzinfo=ist_tz)
+        return ts
 
     ts_str = str(ts).strip()
     if not ts_str:
@@ -101,17 +112,17 @@ def parse_timestamp(ts: Union[str, datetime, None]) -> Optional[datetime]:
     try:
         dt = datetime.fromisoformat(ts_clean)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            # Naive time is treated as local IST
+            dt = dt.replace(tzinfo=ist_tz)
         return dt
     except Exception:
-        # Fallback parsing
         try:
             parts = ts_clean.split("T")
             if len(parts) == 2:
                 date_part, time_part = parts
                 time_clean = time_part.split("+")[0].split("-")[0]
                 dt = datetime.strptime(f"{date_part} {time_clean[:8]}", "%Y-%m-%d %H:%M:%S")
-                return dt.replace(tzinfo=timezone.utc)
+                return dt.replace(tzinfo=ist_tz)
         except Exception:
             pass
         return None
@@ -126,10 +137,10 @@ def format_timestamp(
     Formats a timestamp for display in the target timezone.
     Default format produces strings like '2026-10-24 09:27 PM'.
     """
-    dt_utc = parse_timestamp(ts)
-    if dt_utc is None:
+    dt = parse_timestamp(ts)
+    if dt is None:
         return "N/A"
 
     tz_obj = get_timezone_obj(tz_choice)
-    dt_local = dt_utc.astimezone(tz_obj)
+    dt_local = dt.astimezone(tz_obj)
     return dt_local.strftime(format_str)

@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 110" width="100%" height="100%" fill="none">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="sc-logo-grad-primary" x1="10%" y1="0%" x2="90%" y2="100%">
+      <stop offset="0%" stop-color="#5865F2" />
+      <stop offset="100%" stop-color="#7C83FD" />
+    </linearGradient>
+    <linearGradient id="sc-logo-grad-accent" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#7C83FD" />
+      <stop offset="100%" stop-color="#9BA5FF" />
+    </linearGradient>
+    <linearGradient id="sc-logo-grad-class" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#7C83FD" />
+      <stop offset="100%" stop-color="#9BA5FF" />
+    </linearGradient>
+    <filter id="sc-logo-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Ambient Symbol Glow -->
+  <circle cx="55" cy="55" r="40" fill="#5865F2" fill-opacity="0.2" filter="url(#sc-logo-glow)" />
+
+  <!-- 1. Unique Brand Symbol -->
+  <g transform="translate(55, 55)">
+    <!-- Top-Right Facet (Knowledge / Classroom Portal) -->
+    <path d="M 0,-40 L 35,-20 L 35,18 L 0,-2 Z" fill="url(#sc-logo-grad-primary)" fill-opacity="0.95" />
+    
+    <!-- Top-Left Facet (AI Neural Ray) -->
+    <path d="M 0,-40 L -35,-20 L -35,18 L 0,-2 Z" fill="url(#sc-logo-grad-accent)" fill-opacity="0.85" />
+    
+    <!-- Bottom Anchor Facet -->
+    <path d="M -35,18 L 0,38 L 35,18 L 0,13 Z" fill="url(#sc-logo-grad-primary)" fill-opacity="0.75" />
+
+    <!-- Center Floating Neural Prism / Camera Shutter Spark -->
+    <polygon points="0,-18 16,-6 16,11 0,21 -16,11 -16,-6" fill="#080B18" stroke="url(#sc-logo-grad-accent)" stroke-width="2.5" />
+
+    <!-- Core AI Lightning Node (The Instant 'Snap' Pulse) -->
+    <polygon points="0,-10 3.5,-1.5 11,0 3.5,1.5 0,10 -3.5,1.5 -11,0 -3.5,-1.5" fill="#FFFFFF" />
+    
+    <!-- Accent Dots / Connection Pins -->
+    <circle cx="0" cy="-40" r="3" fill="#FFFFFF" />
+    <circle cx="35" cy="-20" r="2.5" fill="#9BA5FF" />
+    <circle cx="-35" cy="-20" r="2.5" fill="#7C83FD" />
+    <circle cx="0" cy="38" r="3" fill="#5865F2" />
+  </g>
+
+  <!-- 2. Typography Wordmark -->
+  <g transform="translate(125, 0)">
+    <!-- Main Brand Name -->
+    <text x="0" y="58" font-family="'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" font-size="38" font-weight="800" letter-spacing="-0.03em">
+      <tspan fill="#FFFFFF">SNAP </tspan>
+      <tspan fill="url(#sc-logo-grad-class)">CLASS</tspan>
+    </text>
+
+    <!-- Version Badge / Tag -->
+    <rect x="238" y="32" width="58" height="20" rx="10" fill="rgba(88, 101, 242, 0.2)" stroke="rgba(155, 165, 255, 0.3)" stroke-width="1" />
+    <text x="267" y="46" font-family="'Plus Jakarta Sans', sans-serif" font-size="10" font-weight="700" fill="#9BA5FF" text-anchor="middle" letter-spacing="0.05em">v2.4 AI</text>
+
+    <!-- Tagline -->
+    <text x="2" y="80" font-family="'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif" font-size="10.5" font-weight="600" fill="#A5AEC8" letter-spacing="0.16em">
+      AI-POWERED SMART CLASSROOM PLATFORM
+    </text>
+  </g>
+</svg>
